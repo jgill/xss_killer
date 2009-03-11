@@ -6,6 +6,7 @@ module XssKiller
         options[:allow_injection].map!(&:to_s)
         options[:sanitize] ||= []
         options[:sanitize].map!(&:to_s)
+        options[:allow_tidy] = true if options[:allow_tidy].nil?
         write_inheritable_attribute :xss_killer_options, options
         write_inheritable_attribute :kill_xss, true
       end
@@ -28,6 +29,10 @@ module XssKiller
       elsif self.class.xss_killer_options[:sanitize].include?(column_name.to_s)
         sanitized = XssKiller.template.sanitize value
         formatted = XssKiller.template.simple_format sanitized
+        if defined?(Tidy) && self.class.xss_killer_options[:allow_tidy]
+            Tidy.open(:show_body_only => true, :char_encoding => "utf8", :output_xhtml => true) { |tidy| formatted = tidy.clean(formatted)}
+        end
+        formatted
       else
         ERB::Util.html_escape value
       end

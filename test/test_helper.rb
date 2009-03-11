@@ -52,6 +52,16 @@ class SubFoo < Foo
   set_table_name "foos"
 end
 
+class TidyFoo < Foo
+  set_table_name "foos"                                           
+  kills_xss :sanitize => ["attr_to_sanitize"], :allow_tidy => true
+end
+
+class NoTidyFoo < Foo
+  set_table_name "foos"                                           
+  kills_xss :sanitize => ["attr_to_sanitize"], :allow_tidy => false
+end
+
 class Bar < ActiveRecord::Base
 end
 

@@ -1,6 +1,17 @@
 require File.dirname(__FILE__) + "/test_helper"
 
 class ActiveRecordExtensionTest < Test::Unit::TestCase
+  def initialize(name)
+    super(name)
+    require 'tidy'
+  end
+  
+  def setup
+    if defined?(Tidy)
+      Object.send(:remove_const, :Tidy)
+    end
+  end
+  
   test "setting which attributes are escaped" do
     foo = Foo.new :attr_to_allow_injection => "<js>", :attr_to_kill_xss => "<js>"
     XssKiller.rendering :html, ActionView::Base.new do
@@ -54,4 +65,56 @@ class ActiveRecordExtensionTest < Test::Unit::TestCase
       assert_equal formatted, foo.attr_to_sanitize
     end
   end
+  
+  test "if using sanitize and tidy is defined it uses tidy by default" do
+    Kernel.load 'tidy.rb'
+    Tidy.path = defined?(TIDY_PATH) ? TIDY_PATH : "/opt/local/lib/libtidy.dylib"
+    
+    formatted = "<p><a href=\"http://www.google.com\">google<br />\nline2</a></p>\n\n"
+    foo = Foo.new :attr_to_sanitize => "<a href='http://www.google.com'>google\nline2"
+    XssKiller.rendering :html, ActionView::Base.new do
+      assert_equal formatted, foo.attr_to_sanitize
+    end
+  end
+  
+  test "if using sanitize and tidy is defined it uses tidy if allow_tidy option is true" do
+    Kernel.load 'tidy.rb'
+    Tidy.path = defined?(TIDY_PATH) ? TIDY_PATH : "/opt/local/lib/libtidy.dylib"
+    
+    formatted = "<p><a href=\"http://www.google.com\">google<br />\nline2</a></p>\n\n"
+    foo = TidyFoo.new :attr_to_sanitize => "<a href='http://www.google.com'>google\nline2"
+    XssKiller.rendering :html, ActionView::Base.new do
+      assert_equal formatted, foo.attr_to_sanitize
+    end
+  end
+  
+  test "if using sanitize and tidy is defined it doesn't use tidy if allow_tidy option is false" do
+    Kernel.load 'tidy.rb'
+    Tidy.path = defined?(TIDY_PATH) ? TIDY_PATH : "/opt/local/lib/libtidy.dylib"
+    
+    formatted = "<p><a href=\"http://www.google.com\">google\n<br />line2</p>"
+    foo = NoTidyFoo.new :attr_to_sanitize => "<a href='http://www.google.com'>google\nline2"
+    XssKiller.rendering :html, ActionView::Base.new do
+      assert_equal formatted, foo.attr_to_sanitize
+    end
+  end
+  
+  test "if using sanitize and tidy is not defined it doesn't use it" do
+    formatted = "<p><a href=\"http://www.google.com\">google\n<br />line2</p>"
+    foo = TidyFoo.new :attr_to_sanitize => "<a href='http://www.google.com'>google\nline2"
+    XssKiller.rendering :html, ActionView::Base.new do
+      assert_equal formatted, foo.attr_to_sanitize
+    end
+  end
+  
+  test "tidy has no affect on allow_injection" do
+    Kernel.load 'tidy.rb'
+    Tidy.path = defined?(TIDY_PATH) ? TIDY_PATH : "/opt/local/lib/libtidy.dylib"
+    
+    foo = Foo.new :attr_to_allow_injection => "<js>"
+    XssKiller.rendering :html, ActionView::Base.new do
+      assert_equal "<js>", foo.attr_to_allow_injection
+    end
+  end
+  
 end
