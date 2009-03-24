@@ -29,13 +29,17 @@ module XssKiller
       elsif self.class.xss_killer_options[:sanitize].include?(column_name.to_s)
         sanitized = XssKiller.template.sanitize value
         formatted = XssKiller.template.simple_format sanitized
-        if defined?(Tidy) && self.class.xss_killer_options[:allow_tidy]
+        if tidy_defined? && self.class.xss_killer_options[:allow_tidy]
             Tidy.open(:show_body_only => true, :char_encoding => "utf8", :output_xhtml => true) { |tidy| formatted = tidy.clean(formatted)}
         end
         formatted
       else
         ERB::Util.html_escape value
       end
+    end
+    
+    def tidy_defined?
+      defined?(Tidy) != nil
     end
   end
 end
